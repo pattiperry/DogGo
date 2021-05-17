@@ -6,19 +6,49 @@ using System.Linq;
 using System.Threading.Tasks;
 using DogGo.Repositories;
 using DogGo.Models;
+using System.Security.Claims;
 
 namespace DogGo.Controllers
 {
     public class WalkersController : Controller
     {
+        private readonly IWalkerRepository _walkerRepo;
+        private readonly IOwnerRepository _ownerRepo;
+        // ASP.NET will give us an instance of our Walker Repository. This is called "Dependency Injection"
+        public WalkersController(IWalkerRepository walkerRepository,
+                                 IOwnerRepository ownerRepository)
+        {
+            _walkerRepo = walkerRepository;
+            _ownerRepo = ownerRepository;
+        }
+
         // GET: WalkersController
         public ActionResult Index()
         {
+            int ownerId = GetCurrentUserId();
+            if(ownerId == 0)
+            {
+                List<Walker> allWalkers = _walkerRepo.GetAllWalkers();
+                return View(allWalkers);
+            }
+           
+            //pulls in the entire owner object(which has a neighborhoodId on it)
+            Owner currentOwner = _ownerRepo.GetOwnerById(ownerId);
+
             //this code will get all the walkers in the Walker table
             //convert it to a list and pass it off to the view
-            List<Walker> walkers = _walkerRepo.GetAllWalkers();
+            List<Walker> walkers = _walkerRepo.GetWalkersInNeighborhood(currentOwner.NeighborhoodId);
+
+
 
             return View(walkers);
+
+            
+        }
+
+        private int GetOwnerById()
+        {
+            throw new NotImplementedException();
         }
 
         // GET: WalkersController/Details/5
@@ -97,12 +127,17 @@ namespace DogGo.Controllers
             }
         }
 
-        private readonly IWalkerRepository _walkerRepo;
-
-        // ASP.NET will give us an instance of our Walker Repository. This is called "Dependency Injection"
-        public WalkersController(IWalkerRepository walkerRepository)
+        private int GetCurrentUserId()
         {
-            _walkerRepo = walkerRepository;
+          
+            string id = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if(id == null)
+            {
+                id = "0";
+            }
+            return int.Parse(id);
         }
+
+
     }
 }
